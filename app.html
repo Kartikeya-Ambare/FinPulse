@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinPulse Quant Engine</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.1/plotly.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0b0d11;
+    --surface:   #13161e;
+    --surface2:  #1a1d27;
+    --border:    #252836;
+    --border2:   #2e3245;
+    --teal:      #00d4a8;
+    --blue:      #00b4d8;
+    --amber:     #ff9f1c;
+    --red:       #ff4d6d;
+    --pink:      #f72585;
+    --text:      #e2e8f0;
+    --muted:     #8892a4;
+    --dim:       #4a5568;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'DM Sans', sans-serif;
+    --radius:    10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.6; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── Header ── */
+  .header {
+    text-align: center; padding: 2rem 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #0d1117 0%, var(--bg) 100%);
+  }
+  .header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+  .header p  { color: var(--muted); margin-top: 4px; font-size: 0.9rem; }
+
+  /* ── Layout ── */
+  .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+  /* ── Setup Panel ── */
+  .setup-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+  }
+  .setup-panel h3 { color: var(--teal); font-size: 1rem; margin-bottom: 1rem; font-family: var(--font-mono); }
+  .stock-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .stock-chip {
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+    border: 1px solid var(--border2); background: var(--surface2);
+    color: var(--muted); transition: all 0.15s; font-family: var(--font-mono); font-weight: 600;
+    user-select: none;
+  }
+  .stock-chip.selected { background: rgba(0,212,168,0.15); border-color: var(--teal); color: var(--teal); }
+  .qty-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 1rem 0; }
+  .qty-item label { display: block; color: var(--muted); font-size: 0.75rem; font-family: var(--font-mono); margin-bottom: 4px; }
+  .qty-item input {
+    width: 100%; padding: 6px 10px; background: var(--bg); border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--text); font-family: var(--font-mono); font-size: 0.85rem;
+  }
+  .qty-item input:focus { outline: none; border-color: var(--teal); }
+  .run-btn {
+    width: 100%; padding: 12px; background: var(--teal); color: #000; font-weight: 700;
+    font-size: 1rem; border: none; border-radius: var(--radius); cursor: pointer;
+    font-family: var(--font-sans); letter-spacing: 0.3px; transition: opacity 0.15s;
+    margin-top: 0.5rem;
+  }
+  .run-btn:hover { opacity: 0.9; }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Progress ── */
+  .progress-wrap { margin: 1rem 0; display: none; }
+  .progress-bar-outer { background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-bar-inner { height: 100%; background: linear-gradient(90deg, var(--teal), var(--blue)); border-radius: 4px; transition: width 0.4s ease; width: 0%; }
+  .progress-text { color: var(--muted); font-size: 0.8rem; font-family: var(--font-mono); margin-top: 6px; }
+
+  /* ── Tabs ── */
+  .tab-bar {
+    display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 4px; margin-bottom: 1.25rem; flex-wrap: wrap;
+  }
+  .tab-btn {
+    flex: 1; min-width: 130px; padding: 8px 12px; border: none; border-radius: 7px;
+    background: transparent; color: var(--muted); cursor: pointer; font-family: var(--font-sans);
+    font-size: 0.82rem; font-weight: 500; transition: all 0.15s; white-space: nowrap;
+  }
+  .tab-btn.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Section Title ── */
+  .section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; }
+  .section-title.teal  { color: var(--teal); }
+  .section-title.blue  { color: var(--blue); }
+  .section-title.amber { color: var(--amber); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+  /* ── Metric Cards ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 1rem; }
+  .metric-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+  }
+  .metric-label { color: var(--muted); font-size: 0.75rem; font-family: var(--font-mono); }
+  .metric-value { font-size: 1.4rem; font-weight: 700; margin: 4px 0 2px; }
+  .metric-delta { font-size: 0.8rem; font-family: var(--font-mono); }
+  .metric-delta.pos { color: var(--teal); }
+  .metric-delta.neg { color: var(--red); }
+
+  /* ── Info Box ── */
+  .info-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 1rem;
+    font-size: 0.85rem; color: var(--muted); line-height: 1.8;
+  }
+  .info-box b.teal  { color: var(--blue); }
+  .info-box b.white { color: var(--text); }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { background: var(--surface2); color: var(--muted); font-family: var(--font-mono);
+       text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ── KPI Cards ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 1rem; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; height: 100%;
+  }
+  .kpi-title  { color: var(--muted); font-size: 0.75rem; font-family: var(--font-mono); margin-bottom: 4px; }
+  .kpi-value  { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+  .kpi-badge  { display: inline-block; padding: 2px 10px; border-radius: 4px; color: #fff; font-size: 0.75rem; font-weight: 700; margin-bottom: 6px; }
+  .kpi-tip    { color: var(--dim); font-size: 0.72rem; line-height: 1.5; }
+
+  /* ── Expander ── */
+  .expander { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; }
+  .expander-header {
+    padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between;
+    align-items: center; font-weight: 600; color: var(--text);
+    border-radius: var(--radius); user-select: none;
+  }
+  .expander-header:hover { background: var(--surface2); }
+  .expander-arrow { color: var(--muted); transition: transform 0.2s; }
+  .expander.open .expander-arrow { transform: rotate(180deg); }
+  .expander-body { display: none; padding: 0 16px 16px; }
+  .expander.open .expander-body { display: block; }
+
+  .section-header {
+    font-size: 0.95rem; font-weight: 700; padding: 8px 0 6px;
+    border-bottom: 2px solid; margin-bottom: 12px;
+  }
+  .section-header.teal  { color: var(--blue);  border-color: var(--blue);  }
+  .section-header.green { color: #06d6a0;       border-color: #06d6a0;      }
+  .section-header.amber { color: var(--amber);  border-color: var(--amber); }
+  .section-header.pink  { color: var(--pink);   border-color: var(--pink);  }
+
+  /* ── Plot container ── */
+  .plot-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+  .plot-inner { width: 100%; min-height: 350px; }
+
+  /* ── Legend ── */
+  .legend-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-top: 1rem;
+  }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 0.85rem; }
+  .legend-badge { padding: 2px 10px; border-radius: 4px; color: #fff; font-size: 0.78rem; font-weight: 700; }
+
+  /* ── Alerts ── */
+  .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 10px; font-size: 0.85rem; }
+  .alert-info    { background: rgba(0,180,216,0.12); border: 1px solid rgba(0,180,216,0.3); color: var(--blue); }
+  .alert-warn    { background: rgba(255,159,28,0.12); border: 1px solid rgba(255,159,28,0.3); color: var(--amber); }
+  .alert-success { background: rgba(0,212,168,0.12); border: 1px solid rgba(0,212,168,0.3); color: var(--teal); }
+  .alert-error   { background: rgba(255,77,109,0.12); border: 1px solid rgba(255,77,109,0.3); color: var(--red); }
+
+  /* ── Two-col ── */
+  .col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 768px) { .col2 { grid-template-columns: 1fr; } }
+
+  /* ── Weight table row highlight ── */
+  .highlight-pos { color: var(--teal) !important; }
+  .highlight-neg { color: var(--red)  !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <h1>📈 FinPulse Quant Engine</h1>
+  <p>Multi-Stock Portfolio Prediction · GARCH Volatility · Monte Carlo Risk Analytics</p>
+</div>
+
+<div class="container">
+
+  <!-- ═══ SETUP PANEL ═══════════════════════════════════════════════════════ -->
+  <div class="setup-panel">
+    <h3>🎯 STOCK SELECTION &amp; PORTFOLIO SETUP</h3>
+
+    <div id="stockGrid" class="stock-grid"></div>
+    <div id="qtySection" style="display:none;">
+      <p style="color:var(--muted);font-size:0.8rem;margin-bottom:8px;">🔢 Quantity per stock</p>
+      <div id="qtyGrid" class="qty-grid"></div>
+    </div>
+
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">🚀 Run Full Analysis</button>
+  </div>
+
+  <!-- ═══ PROGRESS ═══════════════════════════════════════════════════════════ -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="progressBar"></div></div>
+    <div class="progress-text" id="progressText">Initializing…</div>
+  </div>
+  <div id="alertArea"></div>
+
+  <!-- ═══ DASHBOARD (hidden until run) ═════════════════════════════════════ -->
+  <div id="dashboard" style="display:none;">
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="showTab(0)">📈 Stock Predictions</button>
+      <button class="tab-btn"        onclick="showTab(1)">🕯️ Candlestick</button>
+      <button class="tab-btn"        onclick="showTab(2)">💼 Portfolio</button>
+      <button class="tab-btn"        onclick="showTab(3)">⚠️ Risk Analytics</button>
+      <button class="tab-btn"        onclick="showTab(4)">🔬 Backtest</button>
+      <button class="tab-btn"        onclick="showTab(5)">🏥 Financial KPIs</button>
+    </div>
+
+    <!-- ═══ TAB 1 — Stock Predictions ════════════════════════════════════════ -->
+    <div class="tab-panel active" id="tab0">
+      <div class="section-title teal">📈 Per-Stock Prediction Results</div>
+      <div class="table-wrap"><table id="summaryTable"><thead></thead><tbody></tbody></table></div>
+      <hr class="divider">
+      <div class="section-title">🔮 Predicted vs Actual + 2-Day Forecast</div>
+      <div id="predCharts"></div>
+    </div>
+
+    <!-- ═══ TAB 2 — Candlestick ════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab1">
+      <div class="section-title blue">🕯️ Historical Candlestick Charts</div>
+      <p style="color:var(--muted);margin-bottom:1rem;font-size:0.85rem;">Last 90 trading days · OHLC with volume bars</p>
+      <div id="candleCharts"></div>
+    </div>
+
+    <!-- ═══ TAB 3 — Portfolio ═════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab2">
+      <div class="section-title amber">💼 Portfolio Summary</div>
+      <div class="metric-grid" id="portfolioMetrics"></div>
+      <hr class="divider">
+      <div class="col2">
+        <div class="plot-box"><div class="plot-inner" id="trendPlot"></div></div>
+        <div class="plot-box"><div class="plot-inner" id="piePlot"></div></div>
+      </div>
+      <div class="plot-box"><div class="plot-inner" id="barPlot"></div></div>
+      <div class="section-title" style="margin-top:1rem;">📋 Weight Breakdown</div>
+      <div class="table-wrap"><table id="weightTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+
+    <!-- ═══ TAB 4 — Risk Analytics ════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab3">
+      <div class="section-title" style="color:var(--red);">⚠️ Risk Analytics</div>
+      <div class="info-box">
+        <b class="teal">3 VaR Methods:</b> ① Historical Simulation · ② Parametric (Variance-Covariance) · ③ Monte Carlo VaR
+      </div>
+      <div class="info-box" id="riskGlossary">
+        <b class="teal" style="font-size:0.95rem;">📖 Quick Glossary</b><br>
+        <b class="white">VaR (Value at Risk)</b> — The maximum amount you could <i>lose</i> on a bad day.<br>
+        &nbsp;&nbsp;• <b style="color:#90e0ef;">Historical VaR 95%</b>: On 95% of days, your loss won't exceed this number.<br>
+        &nbsp;&nbsp;• <b style="color:#90e0ef;">Historical VaR 99%</b>: Loss exceeds this only 1 in 100 days.<br>
+        &nbsp;&nbsp;• <b style="color:#90e0ef;">CVaR / Expected Shortfall</b>: If a bad day happens, this is the <i>average</i> loss you'd face.<br>
+        <b class="white">Parametric VaR</b> — Same idea but calculated using a mathematical formula (assumes normal distribution).<br>
+        <b class="white">Monte Carlo VaR</b> — Uses thousands of simulated future scenarios to estimate worst-case 30-day loss.<br>
+        <b class="white">Sharpe Ratio</b> — Return earned per unit of risk. Higher = better. Above 1 is good; above 2 is excellent.<br>
+        <b class="white">Max Drawdown</b> — The biggest peak-to-valley drop your portfolio has experienced.
+      </div>
+
+      <p style="color:var(--muted);font-size:0.8rem;font-weight:600;margin-bottom:8px;">① Historical VaR</p>
+      <div class="metric-grid" id="riskMetrics1"></div>
+      <p style="color:var(--muted);font-size:0.8rem;font-weight:600;margin-bottom:8px;margin-top:4px;">② Parametric VaR</p>
+      <div class="metric-grid" id="riskMetrics2"></div>
+      <p style="color:var(--muted);font-size:0.8rem;font-weight:600;margin-bottom:8px;margin-top:4px;">③ Monte Carlo VaR</p>
+      <div class="metric-grid" id="riskMetrics3"></div>
+      <div class="metric-grid" id="riskMetrics4" style="margin-top:4px;"></div>
+      <hr class="divider">
+      <div class="plot-box"><div class="plot-inner" id="corrPlot"></div></div>
+      <div class="info-box" style="margin-top:1rem;">
+        <b class="teal" style="font-size:0.95rem;">📖 GARCH Volatility Table</b><br>
+        <b class="white">GARCH Vol (Ann %)</b> — Annualised volatility estimate. E.g., 25% means the stock could swing ±25% in a year.<br>
+        <b class="white">RAF</b> (Risk Adjustment Factor) — Adjusts portfolio allocation based on risk. Lower RAF = less weight due to higher risk.<br>
+        <b class="white">Beta</b> — Sensitivity to overall market. Beta &gt;1 = more volatile than market; &lt;1 = calmer.<br>
+        <b class="white">D/E Ratio</b> — Debt-to-Equity. High D/E = more debt = more financial risk.
+      </div>
+      <div class="section-title" style="margin-top:0.5rem;">📊 Per-Stock GARCH Volatility &amp; Risk Factors</div>
+      <div class="table-wrap"><table id="garchTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+
+    <!-- ═══ TAB 5 — Backtest ═══════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab4">
+      <div class="section-title" style="color:#a78bfa;">🔬 Historical Backtesting &amp; Model Accuracy</div>
+      <div class="info-box">
+        Backtesting simulates trading on the validation set: if the model predicts price will rise → BUY; if fall → SELL.
+        Cumulative P&amp;L shows how the strategy would have performed historically.
+        <b class="white">Direction Accuracy</b> = % of days the model correctly predicted up/down movement.
+      </div>
+      <div class="section-title">📊 Consolidated Model Accuracy</div>
+      <div class="plot-box"><div class="plot-inner" id="accuracyTable"></div></div>
+      <hr class="divider">
+      <div id="backtestCharts"></div>
+    </div>
+
+    <!-- ═══ TAB 6 — Financial KPIs ════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab5">
+      <div class="section-title" style="color:#06d6a0;">🏥 Financial Health KPIs</div>
+      <div class="info-box" id="kpiIntro">
+        <b class="teal" style="font-size:1rem;">📖 What is a KPI?</b>
+        <p style="margin:8px 0 4px;"><b class="white">KPI (Key Performance Indicator)</b> — a measurable number that grades a company's financial health.
+        Every KPI comes from one of three financial documents:</p>
+        <ul style="margin:6px 0 8px 18px;line-height:1.8;">
+          <li><b style="color:#00b4d8;">Income Statement</b> — revenue and expenses over a period</li>
+          <li><b style="color:#06d6a0;">Balance Sheet</b> — snapshot of assets vs. liabilities</li>
+          <li><b style="color:#ff9f1c;">Cash Flow Statement</b> — tracks actual cash moving in/out</li>
+        </ul>
+        <b class="white" style="font-size:0.85rem;">Quick Abbreviations:</b>
+        <span style="color:var(--dim);font-size:0.82rem;"> EBITDA · ROE · ROA · P/E · P/B · EV/EBITDA · PEG · OCF · FCF · D/E</span>
+      </div>
+      <div id="kpiExpanders"></div>
+      <hr class="divider">
+      <div class="section-title">📋 KPI Source Reference</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Source</th><th>Data Points</th><th>KPIs Derived</th></tr></thead>
+          <tbody>
+            <tr><td>📄 Income Statement</td><td>Revenue, COGS, Net Income, Interest, Taxes</td><td>Profit Margins, EBITDA, Revenue Growth</td></tr>
+            <tr><td>🏦 Balance Sheet</td><td>Assets, Liabilities, Equity, Inventory</td><td>Current/Quick Ratio, D/E, Working Capital, ROE, ROA</td></tr>
+            <tr><td>💰 Cash Flow</td><td>Cash from Operations, CapEx</td><td>OCF, FCF, Burn Rate</td></tr>
+            <tr><td>🔗 Hybrid</td><td>Revenue + Headcount, Price + Earnings</td><td>P/E, EV/EBITDA, PEG, Beta, Dividend Yield</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="legend-box">
+        <h4 style="margin:0 0 10px;color:var(--text);">🔑 Health Badge Legend</h4>
+        <div class="legend-row"><span class="legend-badge" style="background:#06d6a0;">Green</span> Strong / Healthy</div>
+        <div class="legend-row"><span class="legend-badge" style="background:#ff9f1c;">Amber</span> Moderate / Fair</div>
+        <div class="legend-row"><span class="legend-badge" style="background:#ff4d4d;">Red</span> Weak / Risky</div>
+        <div class="legend-row"><span class="legend-badge" style="background:#f72585;">Pink</span> Premium / Aggressive</div>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</div><!-- /container -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════════════
+const API_BASE = 'http://localhost:8000';
+const DEFAULT_TICKERS = [
+  'RELIANCE.NS','TCS.NS','INFY.NS','HDFCBANK.NS',
+  'WIPRO.NS','ICICIBANK.NS','BHARTIARTL.NS','ITC.NS',
+  'SBIN.NS','ADANIENT.NS','HINDUNILVR.NS','BAJFINANCE.NS'
+];
+
+let selectedTickers = ['RELIANCE.NS','TCS.NS','INFY.NS','HDFCBANK.NS'];
+let apiData = null;
+
+// Plotly dark layout base
+const PLOTLY_LAYOUT = {
+  paper_bgcolor: 'transparent', plot_bgcolor: '#0f1117',
+  font: { color: '#e2e8f0', family: 'DM Sans, sans-serif' },
+  xaxis: { gridcolor: '#252836', zerolinecolor: '#252836' },
+  yaxis: { gridcolor: '#252836', zerolinecolor: '#252836' },
+  margin: { t: 40, r: 20, b: 40, l: 50 },
+  legend: { bgcolor: 'rgba(19,22,30,0.8)', bordercolor: '#252836', borderwidth: 1 },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+function init() {
+  const grid = document.getElementById('stockGrid');
+  DEFAULT_TICKERS.forEach(t => {
+    const chip = document.createElement('div');
+    chip.className = 'stock-chip' + (selectedTickers.includes(t) ? ' selected' : '');
+    chip.textContent = t.replace('.NS','');
+    chip.dataset.ticker = t;
+    chip.onclick = () => toggleTicker(t, chip);
+    grid.appendChild(chip);
+  });
+  renderQtyInputs();
+}
+
+function toggleTicker(ticker, chip) {
+  if (selectedTickers.includes(ticker)) {
+    if (selectedTickers.length === 1) return; // keep at least one
+    selectedTickers = selectedTickers.filter(t => t !== ticker);
+    chip.classList.remove('selected');
+  } else {
+    selectedTickers.push(ticker);
+    chip.classList.add('selected');
+  }
+  renderQtyInputs();
+}
+
+function renderQtyInputs() {
+  const sec  = document.getElementById('qtySection');
+  const grid = document.getElementById('qtyGrid');
+  if (!selectedTickers.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  grid.innerHTML = '';
+  selectedTickers.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'qty-item';
+    item.innerHTML = `<label>${t.replace('.NS','')}</label>
+      <input type="number" id="qty_${t.replace('.','_')}" min="1" max="100000" value="10">`;
+    grid.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════════════════
+function showTab(idx) {
+  document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+  document.querySelectorAll('.tab-btn').forEach((b,i)   => b.classList.toggle('active', i===idx));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════════════════════════════════════════
+function setProgress(pct, msg) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = msg;
+}
+
+function showAlert(msg, type='info') {
+  const d = document.getElementById('alertArea');
+  d.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RUN ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════════
+async function runAnalysis() {
+  if (!selectedTickers.length) { showAlert('Please select at least one stock.','warn'); return; }
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('alertArea').innerHTML = '';
+
+  const quantities = {};
+  selectedTickers.forEach(t => {
+    const el = document.getElementById('qty_' + t.replace('.','_'));
+    quantities[t] = el ? parseInt(el.value) || 10 : 10;
+  });
+
+  setProgress(5, '📡 Sending request to FastAPI backend…');
+  try {
+    const resp = await fetch(`${API_BASE}/analyse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickers: selectedTickers, quantities }),
+    });
+    if (!resp.ok) {
+      const err = await resp.text();
+      showAlert(`Backend error (${resp.status}): ${err}`, 'error');
+      btn.disabled = false; return;
+    }
+    setProgress(70, '📊 Processing results…');
+    apiData = await resp.json();
+    setProgress(90, '🎨 Rendering dashboard…');
+    renderDashboard(apiData);
+    setProgress(100, '✅ Analysis complete!');
+    showAlert('✅ FinPulse analysis complete!', 'success');
+    document.getElementById('dashboard').style.display = 'block';
+  } catch(e) {
+    if (e.message && e.message.includes('fetch')) {
+      showAlert('⚠️ Cannot connect to FastAPI backend. Make sure <code>uvicorn api_server:app --port 8000</code> is running.', 'error');
+    } else {
+      showAlert(`Request failed: ${e.message}`, 'error');
+    }
+  }
+  btn.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+function renderDashboard(d) {
+  const { valid_tickers, error_tickers, current_prices, stock_summaries,
+          stock_results, portfolio_summary: ps, trend_data, mc_results: mc,
+          risk_report, corr_matrix, stock_values, fundamentals,
+          candlestick_data, accuracy_summary } = d;
+
+  // Warn on errors
+  const alert = document.getElementById('alertArea');
+  error_tickers.forEach(t =>
+    alert.insertAdjacentHTML('beforeend', `<div class="alert alert-warn">⚠️ Model failed for ${t}</div>`)
+  );
+
+  renderTab1(valid_tickers, stock_summaries, stock_results, current_prices);
+  renderTab2(valid_tickers, candlestick_data);
+  renderTab3(valid_tickers, ps, trend_data, stock_values, d.quantities);
+  renderTab4(valid_tickers, risk_report, ps, corr_matrix, stock_results, fundamentals);
+  renderTab5(valid_tickers, stock_results, accuracy_summary);
+  renderTab6(valid_tickers, fundamentals);
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function fmtINR(v) { return '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtINR0(v){ return '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+function fmtCr(v)  {
+  if (!v) return 'N/A';
+  const cr = v / 1e7;
+  return Math.abs(cr) >= 100 ? `₹${cr.toLocaleString('en-IN',{maximumFractionDigits:0})} Cr`
+                               : `₹${cr.toFixed(2)} Cr`;
+}
+function fmtPctVal(v) { if (!v) return 'N/A'; return Math.abs(v)<10 ? (v*100).toFixed(2)+'%' : v.toFixed(2)+'%'; }
+
+function metricCard(label, value, delta='', deltaClass='') {
+  return `<div class="metric-card">
+    <div class="metric-label">${label}</div>
+    <div class="metric-value">${value}</div>
+    ${delta ? `<div class="metric-delta ${deltaClass}">${delta}</div>` : ''}
+  </div>`;
+}
+
+function buildTable(el, rows, cols) {
+  const th = el.querySelector('thead'), tb = el.querySelector('tbody');
+  th.innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+  tb.innerHTML = rows.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? ''}</td>`).join('') + '</tr>').join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 1 — Stock Predictions
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTab1(tickers, summaries, results, prices) {
+  // Summary table
+  if (summaries && summaries.length) {
+    const cols = Object.keys(summaries[0]);
+    buildTable(document.getElementById('summaryTable'), summaries, cols);
+  }
+
+  // Per-stock charts
+  const wrap = document.getElementById('predCharts');
+  wrap.innerHTML = '';
+  tickers.forEach(t => {
+    const res = results[t];
+    const o1 = res.predicted_ohlc, o2 = res.predicted_ohlc2;
+    const actual = res.val_actual_close, preds = res.val_preds_close;
+    const dates  = res.val_dates || actual.map((_,i) => i);
+    const cur = prices[t];
+    const d1c = o1[3], d2c = o2[3];
+    const d1d = ((d1c - cur)/cur*100).toFixed(2);
+    const d2d = ((d2c - cur)/cur*100).toFixed(2);
+
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div style="margin-bottom:4px;font-weight:700;font-size:0.95rem;color:var(--text);">${t}</div>
+      <div class="plot-box"><div class="plot-inner" id="pred_${t.replace('.','_')}"></div></div>
+      <div class="metric-grid" style="margin-bottom:1.5rem;">
+        ${metricCard(t+' Current', fmtINR(cur))}
+        ${metricCard(t+' Day +1',  fmtINR(d1c), fmtPct(+d1d), +d1d>=0?'pos':'neg')}
+        ${metricCard(t+' Day +2',  fmtINR(d2c), fmtPct(+d2d), +d2d>=0?'pos':'neg')}
+      </div>`;
+    wrap.appendChild(div);
+
+    // Plot after DOM insertion
+    requestAnimationFrame(() => {
+      const traceActual = { x: dates, y: actual, name:'Actual', line:{color:'#00d4a8', width:2}, type:'scatter', mode:'lines' };
+      const tracePred   = { x: dates, y: preds,  name:'Predicted', line:{color:'#f72585', width:1.5, dash:'dot'}, type:'scatter', mode:'lines' };
+      // Future forecast candlestick stub
+      const lastDate = dates[dates.length-1];
+      const futureDates = [lastDate, 'D+1', 'D+2'];
+      const futureClose = [actual[actual.length-1], d1c, d2c];
+      const traceFuture = { x: futureDates, y: futureClose, name:'Forecast', line:{color:'#ff9f1c',width:2,dash:'dash'}, type:'scatter', mode:'lines+markers', marker:{size:7} };
+      Plotly.newPlot(`pred_${t.replace('.','_')}`,
+        [traceActual, tracePred, traceFuture],
+        { ...PLOTLY_LAYOUT, title:{ text:`${t} — Predicted vs Actual`, font:{size:13} }, height:340 },
+        { responsive:true, displayModeBar:false }
+      );
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 2 — Candlestick
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTab2(tickers, candleData) {
+  const wrap = document.getElementById('candleCharts');
+  wrap.innerHTML = '';
+  tickers.forEach(t => {
+    const cd = candleData[t];
+    const N  = Math.min(90, cd.dates.length);
+    const sl = cd.dates.length - N;
+    const div = document.createElement('div');
+    div.innerHTML = `<div class="plot-box"><div class="plot-inner" id="candle_${t.replace('.','_')}"></div></div>`;
+    wrap.appendChild(div);
+    requestAnimationFrame(() => {
+      const candle = {
+        x: cd.dates.slice(sl), open: cd.open.slice(sl),
+        high: cd.high.slice(sl), low: cd.low.slice(sl), close: cd.close.slice(sl),
+        type:'candlestick', name:t,
+        increasing:{line:{color:'#00d4a8'}}, decreasing:{line:{color:'#ff4d6d'}}
+      };
+      const vol = {
+        x: cd.dates.slice(sl), y: cd.volume.slice(sl), type:'bar', name:'Volume',
+        marker:{color:'rgba(0,180,216,0.3)'}, yaxis:'y2'
+      };
+      Plotly.newPlot(`candle_${t.replace('.','_')}`, [candle, vol], {
+        ...PLOTLY_LAYOUT,
+        title:{ text:`${t} — Last 90 Days (OHLCV)`, font:{size:13} },
+        height: 380,
+        yaxis: { ...PLOTLY_LAYOUT.yaxis, domain:[0.3,1] },
+        yaxis2:{ gridcolor:'#252836', domain:[0,0.25], showticklabels:false },
+        xaxis: { ...PLOTLY_LAYOUT.xaxis, rangeslider:{visible:false} },
+      }, { responsive:true, displayModeBar:false });
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 3 — Portfolio
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTab3(tickers, ps, trendData, stockValues, quantities) {
+  const pnl  = ps.predicted_total - ps.current_total;
+  document.getElementById('portfolioMetrics').innerHTML =
+    metricCard('Current Portfolio', fmtINR0(ps.current_total)) +
+    metricCard('Predicted Portfolio', fmtINR0(ps.predicted_total), fmtPct(ps.pct_change), ps.pct_change>=0?'pos':'neg') +
+    metricCard('Expected P&L', fmtINR0(pnl), fmtPct(ps.pct_change), pnl>=0?'pos':'neg');
+
+  // Trend chart
+  const dates = trendData.map(r => r.Date);
+  const vals  = trendData.map(r => r.Portfolio_Value);
+  requestAnimationFrame(() => {
+    Plotly.newPlot('trendPlot', [{
+      x:dates, y:vals, type:'scatter', mode:'lines', fill:'tozeroy',
+      line:{color:'#00d4a8',width:2}, fillcolor:'rgba(0,212,168,0.08)', name:'Portfolio Value'
+    }], { ...PLOTLY_LAYOUT, title:{ text:'Portfolio Value Over Time', font:{size:13} }, height:300 },
+    { responsive:true, displayModeBar:false });
+
+    // Pie
+    const pieLabels = tickers;
+    const pieVals   = tickers.map(t => stockValues[t] || 0);
+    Plotly.newPlot('piePlot', [{
+      labels: pieLabels, values: pieVals, type:'pie', hole:0.4,
+      marker:{ colors:['#00d4a8','#00b4d8','#f72585','#ff9f1c','#a78bfa','#06d6a0','#ff4d6d','#4cc9f0','#7209b7','#3a86ff','#fb8500','#ef233c'] },
+      textinfo:'label+percent', textfont:{size:11},
+    }], { ...PLOTLY_LAYOUT, title:{ text:'Portfolio Allocation', font:{size:13} }, height:300, showlegend:false },
+    { responsive:true, displayModeBar:false });
+
+    // Bar
+    const qtys = tickers.map(t => quantities[t] || 0);
+    Plotly.newPlot('barPlot', [{
+      x:tickers, y:qtys, type:'bar', name:'Quantity',
+      marker:{ color:tickers.map((_,i) => `hsl(${(i*37+170)%360},70%,55%)`) },
+      text:qtys.map(String), textposition:'outside',
+    }], { ...PLOTLY_LAYOUT, title:{ text:'Stock Quantities', font:{size:13} }, height:280, bargap:0.3 },
+    { responsive:true, displayModeBar:false });
+  });
+
+  // Weight table
+  const rows = tickers.map(t => ({
+    'Ticker': t,
+    'Weight (%)': (ps.weights[t] || 0).toFixed(2) + '%',
+    'Current Value (₹)': fmtINR0(stockValues[t] || 0),
+  })).sort((a,b) => parseFloat(b['Weight (%)']) - parseFloat(a['Weight (%)']));
+  const wt = document.getElementById('weightTable');
+  buildTable(wt, rows, ['Ticker','Weight (%)','Current Value (₹)']);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 4 — Risk Analytics
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTab4(tickers, risk, ps, corrData, results, fundamentals) {
+  document.getElementById('riskMetrics1').innerHTML =
+    metricCard('Historical VaR 95% (1d)',    fmtINR0(risk.var_95  || 0)) +
+    metricCard('Historical VaR 99% (1d)',    fmtINR0(risk.var_99  || 0)) +
+    metricCard('CVaR 95% — Avg. Worst Loss', fmtINR0(risk.cvar_95 || 0));
+  document.getElementById('riskMetrics2').innerHTML =
+    metricCard('Parametric VaR 95% (1d)', fmtINR0(risk.param_var_95 || 0)) +
+    metricCard('Parametric VaR 99% (1d)', fmtINR0(risk.param_var_99 || 0));
+  document.getElementById('riskMetrics3').innerHTML =
+    metricCard('MC VaR — 30-Day Worst',      fmtINR0(risk.mc_var || 0)) +
+    metricCard('Sharpe Ratio',               (risk.sharpe||0).toFixed(3));
+  document.getElementById('riskMetrics4').innerHTML =
+    metricCard('Max Drawdown',               (risk.max_drawdown||0).toFixed(2)+'%') +
+    metricCard('Portfolio Value',            fmtINR0(ps.current_total));
+
+  // Correlation heatmap
+  requestAnimationFrame(() => {
+    const cols = corrData.columns, vals = corrData.values;
+    Plotly.newPlot('corrPlot', [{
+      z: vals, x: cols, y: cols, type:'heatmap',
+      colorscale:[['0','#ff4d6d'],['0.5','#0f1117'],['1','#00d4a8']],
+      zmid:0, text:vals.map(r=>r.map(v=>v.toFixed(2))), texttemplate:'%{text}', showscale:true
+    }], { ...PLOTLY_LAYOUT, title:{ text:'Correlation Heatmap', font:{size:13} }, height:360 },
+    { responsive:true, displayModeBar:false });
+  });
+
+  // GARCH table
+  const rows = tickers.map(t => ({
+    'Ticker':                 t,
+    'GARCH Vol (Ann %)':      ((results[t]?.garch_vol||0)*100).toFixed(2)+'%',
+    'RAF (Risk Adj.)':        (fundamentals[t]?.RAF||1.0).toFixed(4),
+    'Beta':                   (fundamentals[t]?.Beta||1.0).toFixed(2),
+    'D/E Ratio':              (fundamentals[t]?.DE_Ratio||0).toFixed(1)+'%',
+  }));
+  buildTable(document.getElementById('garchTable'), rows,
+    ['Ticker','GARCH Vol (Ann %)','RAF (Risk Adj.)','Beta','D/E Ratio']);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 5 — Backtest
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTab5(tickers, results, accuracySummary) {
+  // Accuracy summary table (plotly table)
+  requestAnimationFrame(() => {
+    if (accuracySummary && accuracySummary.length) {
+      const cols  = Object.keys(accuracySummary[0]);
+      const colVals = cols.map(c => accuracySummary.map(r => r[c]));
+      Plotly.newPlot('accuracyTable', [{
+        type:'table',
+        header:{ values: cols, fill:{color:'#1a1d27'}, font:{color:'#00b4d8', size:12},
+                 line:{color:'#252836'}, align:'center' },
+        cells:{ values: colVals, fill:{color:['#0f1117']},
+                font:{color:'#e2e8f0', size:11}, line:{color:'#252836'}, align:'center' }
+      }], { ...PLOTLY_LAYOUT, height:280, margin:{t:10,r:10,b:10,l:10} },
+      { responsive:true, displayModeBar:false });
+    }
+  });
+
+  // Per-stock backtest
+  const wrap = document.getElementById('backtestCharts');
+  wrap.innerHTML = '';
+  tickers.forEach(t => {
+    const res = results[t];
+    const bt  = res?.backtest || [];
+    if (!bt.length) return;
+
+    const dates   = bt.map(r => r.Date);
+    const actual  = bt.map(r => r.Actual);
+    const pred    = bt.map(r => r.Predicted);
+    const cumPnl  = bt.map(r => r.Cumulative_PnL);
+    const nTrades = bt.length;
+    const wins    = bt.filter(r => r.Daily_PnL > 0).length;
+    const finalPnl= cumPnl[cumPnl.length-1] || 0;
+    const dirAcc  = res.direction_accuracy || 0;
+
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div class="section-title" style="margin-top:1rem;">${t}</div>
+      <div class="metric-grid">
+        ${metricCard('Total Trades', nTrades)}
+        ${metricCard('Win Rate', (wins/Math.max(nTrades,1)*100).toFixed(1)+'%')}
+        ${metricCard('Direction Accuracy', dirAcc.toFixed(1)+'%')}
+        ${metricCard('Final P&L', fmtINR0(finalPnl), finalPnl>=0?'🟢':'🔴', finalPnl>=0?'pos':'neg')}
+      </div>
+      <div class="plot-box"><div class="plot-inner" id="bt_${t.replace('.','_')}"></div></div>
+      <hr class="divider">`;
+    wrap.appendChild(div);
+
+    requestAnimationFrame(() => {
+      Plotly.newPlot(`bt_${t.replace('.','_')}`, [
+        { x:dates, y:actual, name:'Actual',    line:{color:'#00d4a8',width:2}, type:'scatter', mode:'lines' },
+        { x:dates, y:pred,   name:'Predicted', line:{color:'#f72585',width:1.5,dash:'dot'}, type:'scatter', mode:'lines' },
+        { x:dates, y:cumPnl, name:'Cumul. P&L', line:{color:'#ff9f1c',width:2}, type:'scatter', mode:'lines', yaxis:'y2' },
+      ], {
+        ...PLOTLY_LAYOUT,
+        title:{ text:`${t} — Backtest`, font:{size:13} }, height:340,
+        yaxis:  { ...PLOTLY_LAYOUT.yaxis, title:'Price (₹)' },
+        yaxis2: { gridcolor:'#252836', overlaying:'y', side:'right', title:'Cumul. P&L (₹)', showgrid:false },
+      }, { responsive:true, displayModeBar:false });
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 6 — Financial KPIs
+// ═══════════════════════════════════════════════════════════════════════════
+function badge(label, color) {
+  return `<span class="kpi-badge" style="background:${color};">${label}</span>`;
+}
+function kpiCard(title, value, color, badgeHtml, tip) {
+  return `<div class="kpi-card">
+    <div class="kpi-title">${title}</div>
+    <div class="kpi-value" style="color:${color};">${value}</div>
+    ${badgeHtml}
+    <div class="kpi-tip">${tip}</div>
+  </div>`;
+}
+
+function renderTab6(tickers, fundamentals) {
+  const wrap = document.getElementById('kpiExpanders');
+  wrap.innerHTML = '';
+
+  tickers.forEach((t, idx) => {
+    const f = fundamentals[t] || {};
+    const exp = document.createElement('div');
+    exp.className = 'expander' + (idx===0?' open':'');
+    exp.innerHTML = `
+      <div class="expander-header" onclick="toggleExpander(this)">
+        📊 ${t} <span class="expander-arrow">▼</span>
+      </div>
+      <div class="expander-body">${buildKpiBody(f)}</div>`;
+    wrap.appendChild(exp);
+  });
+}
+
+function toggleExpander(header) {
+  header.parentElement.classList.toggle('open');
+}
+
+function buildKpiBody(f) {
+  // Income
+  const npm  = f.NetProfitMargin||0, gm=f.GrossMargin||0, rg=f.RevenueGrowth||0, eg=f.EarningsGrowth||0, om=f.OperatingMargin||0;
+  const ni   = f.NetIncome||0;
+  const npmB = npm>0.10?badge('Healthy','#06d6a0'):npm>0.05?badge('Moderate','#ff9f1c'):badge('Weak','#ff4d4d');
+  const gmB  = gm>0.40?badge('Strong','#06d6a0'):gm>0.20?badge('Moderate','#ff9f1c'):badge('Low','#ff4d4d');
+  const rgB  = rg>0.15?badge('High Growth','#06d6a0'):rg>0?badge('Growing','#ff9f1c'):badge('Declining','#ff4d4d');
+  const niB  = ni>0?badge('Profit','#06d6a0'):badge('Loss','#ff4d4d');
+  const omB  = om>0.15?badge('Strong','#06d6a0'):om>0.05?badge('Fair','#ff9f1c'):badge('Weak','#ff4d4d');
+  const egB  = eg>0.10?badge('Accelerating','#06d6a0'):eg>0?badge('Stable','#ff9f1c'):badge('Declining','#ff4d4d');
+
+  // Balance
+  const cr=f.CurrentRatio||0, qr=f.QuickRatio||0, de=f.DE_Ratio||0, wc=f.WorkingCapital||0, roe=f.ROE||0, roa=f.ROA||0;
+  const crB  = cr>1.5?badge('Strong','#06d6a0'):cr>1?badge('Adequate','#ff9f1c'):badge('Risky','#ff4d4d');
+  const qrB  = qr>1.0?badge('Liquid','#06d6a0'):qr>0.5?badge('Tight','#ff9f1c'):badge('Illiquid','#ff4d4d');
+  const deB  = de<50?badge('Conservative','#06d6a0'):de<150?badge('Moderate','#ff9f1c'):badge('High Leverage','#ff4d4d');
+  const wcB  = wc>0?badge('Positive','#06d6a0'):badge('Negative','#ff4d4d');
+  const roeB = roe>0.20?badge('Excellent','#06d6a0'):roe>0.10?badge('Good','#ff9f1c'):badge('Low','#ff4d4d');
+  const roaB = roa>0.10?badge('Efficient','#06d6a0'):roa>0.05?badge('Fair','#ff9f1c'):badge('Low','#ff4d4d');
+
+  // Cash Flow
+  const ocf=f.OperatingCF||0, fcf=f.FreeCF||0;
+  const ocfB = ocf>0?badge('Cash Generating','#06d6a0'):badge('Cash Burning','#ff4d4d');
+  const fcfB = fcf>0?badge('FCF Positive','#06d6a0'):badge('FCF Negative','#ff4d4d');
+
+  // Valuation
+  const pe=f.PE_Ratio||0, pb=f.PriceToBook||0, eveb=f.EV_to_EBITDA||0, dy=f.DividendYield||0;
+  const bt=f.Beta||1, peg=f.PEG_Ratio||0, pr=f.PayoutRatio||0;
+  const peB  = (pe>0&&pe<15)?badge('Value','#06d6a0'):(pe>=15&&pe<25)?badge('Fair','#ff9f1c'):pe>=25?badge('Growth Premium','#f72585'):badge('N/A','#555');
+  const pbB  = (pb>0&&pb<1)?badge('Undervalued','#06d6a0'):(pb>=1&&pb<3)?badge('Fair','#ff9f1c'):badge('Premium','#f72585');
+  const ebebB= (eveb>0&&eveb<10)?badge('Cheap','#06d6a0'):(eveb>=10&&eveb<15)?badge('Fair','#ff9f1c'):badge('Expensive','#f72585');
+  const dyB  = dy>0.03?badge('Income Stock','#06d6a0'):dy>0?badge('Modest','#ff9f1c'):badge('No Dividend','#555');
+  const btB  = bt<0.8?badge('Defensive','#06d6a0'):bt<1.2?badge('Market-like','#ff9f1c'):badge('Aggressive','#f72585');
+  const pegB = (peg>0&&peg<1)?badge('Undervalued','#06d6a0'):(peg>=1&&peg<2)?badge('Fair','#ff9f1c'):badge('Overvalued','#f72585');
+  const prB  = (pr>0&&pr<0.60)?badge('Sustainable','#06d6a0'):pr>=0.60?badge('High','#ff9f1c'):badge('None','#555');
+
+  return `
+    <div class="section-header teal">📄 1. Income Statement KPIs</div>
+    <div class="kpi-grid">
+      ${kpiCard('Net Profit Margin', fmtPctVal(npm), '#00b4d8', npmB, 'Out of every ₹100 earned, how many rupees the company keeps as profit. >10% is strong.')}
+      ${kpiCard('Gross Margin', fmtPctVal(gm), '#00b4d8', gmB, 'Profit after direct production costs. >40% = durable competitive advantage.')}
+      ${kpiCard('EBITDA', fmtCr(f.EBITDA||0), '#00b4d8', f.EBITDA>0?badge('Profitable','#06d6a0'):badge('Unprofitable','#ff4d4d'), 'Raw operating profitability before accounting adjustments.')}
+      ${kpiCard('Revenue Growth', fmtPctVal(rg), '#00b4d8', rgB, 'Year-over-year change in total sales. >15% = high growth.')}
+      ${kpiCard('Total Revenue', fmtCr(f.TotalRevenue||0), '#00b4d8', '', 'Total money earned from products/services. Also called the top line.')}
+      ${kpiCard('Net Income', fmtCr(ni), '#00b4d8', niB, 'Final profit after all costs, interest, and taxes. The bottom line.')}
+      ${kpiCard('Operating Margin', fmtPctVal(om), '#00b4d8', omB, 'Profit from daily operations before interest and taxes.')}
+      ${kpiCard('Earnings Growth', fmtPctVal(eg), '#00b4d8', egB, 'YoY change in net profit. Growing earnings → higher stock price.')}
+    </div>
+    <div class="section-header green">🏦 2. Balance Sheet KPIs</div>
+    <div class="kpi-grid">
+      ${kpiCard('Current Ratio', cr.toFixed(2)+'x', '#06d6a0', crB, 'Can the company pay short-term bills? >1.5 = safe; <1 = may struggle.')}
+      ${kpiCard('Quick Ratio', qr.toFixed(2)+'x', '#06d6a0', qrB, 'Like Current Ratio but excludes inventory. More cautious measure. >1 = safe.')}
+      ${kpiCard('Debt-to-Equity (D/E)', de.toFixed(1)+'%', '#06d6a0', deB, 'Borrowed money vs. shareholder money. High D/E = more financial risk.')}
+      ${kpiCard('Working Capital', fmtCr(wc), '#06d6a0', wcB, 'Current Assets minus Current Liabilities. Positive = healthy buffer.')}
+      ${kpiCard('Total Cash', fmtCr(f.TotalCash||0), '#06d6a0', '', 'Total liquid assets held. More cash = more financial flexibility.')}
+      ${kpiCard('Total Debt', fmtCr(f.TotalDebt||0), '#06d6a0', '', 'Total borrowings. Compare with Total Cash to gauge repayment ability.')}
+      ${kpiCard('ROE — Return on Equity', fmtPctVal(roe), '#06d6a0', roeB, 'How efficiently management generates profit from shareholder money. >20% = excellent.')}
+      ${kpiCard('ROA — Return on Assets', fmtPctVal(roa), '#06d6a0', roaB, 'How productively all assets are used to generate profit. >10% = excellent.')}
+    </div>
+    <div class="section-header amber">💰 3. Cash Flow Statement KPIs</div>
+    <div class="kpi-grid">
+      ${kpiCard('Operating Cash Flow (OCF)', fmtCr(ocf), '#ff9f1c', ocfB, 'Actual cash from core business operations. Positive OCF = genuinely self-sustaining.')}
+      ${kpiCard('Free Cash Flow (FCF)', fmtCr(fcf), '#ff9f1c', fcfB, 'OCF minus CapEx. Positive FCF = surplus cash available for dividends or growth.')}
+    </div>
+    <div class="section-header pink">🔗 4. Hybrid &amp; Valuation KPIs</div>
+    <div class="kpi-grid">
+      ${kpiCard('P/E Ratio', pe.toFixed(1)+'x', '#f72585', peB, '<15 = value; 15-25 = fairly priced; >25 = high growth expectations baked in.')}
+      ${kpiCard('Price-to-Book (P/B)', pb.toFixed(2)+'x', '#f72585', pbB, '<1 = possibly undervalued; >3 = market expects strong future growth.')}
+      ${kpiCard('EV/EBITDA', eveb.toFixed(1)+'x', '#f72585', ebebB, '<10 = inexpensive; >15 = expensive total company cost vs. earnings.')}
+      ${kpiCard('Dividend Yield', fmtPctVal(dy), '#f72585', dyB, '>3% = solid income stock; 0% = company reinvests all profits.')}
+      ${kpiCard('Beta', bt.toFixed(2), '#f72585', btB, 'Market sensitivity. >1 = more volatile; <1 = calmer than the market.')}
+      ${kpiCard('PEG Ratio', peg.toFixed(2), '#f72585', pegB, '<1 = undervalued growth; >2 = possibly overvalued vs. growth rate.')}
+      ${kpiCard('Revenue per Employee', fmtCr(f.RevPerEmployee||0), '#f72585', '', 'Revenue generated per employee. Higher = more efficient workforce.')}
+      ${kpiCard('Payout Ratio', fmtPctVal(pr), '#f72585', prB, '<60% = sustainable dividends; >60% = high payout; 0% = reinvests all profits.')}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinPulse — Dashboard Guide & Glossary</title>
+  <meta name="description" content="Plain-English guide to every metric in the FinPulse Quant Engine dashboard. Understand GARCH, VaR, RAF, KPIs and more without any finance degree."/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0b0e14;
+      --surface:  #131720;
+      --card:     #1a1f2e;
+      --border:   #252b3b;
+      --accent:   #00b4d8;
+      --green:    #06d6a0;
+      --amber:    #ff9f1c;
+      --red:      #ef476f;
+      --pink:     #f72585;
+      --text:     #e2e8f0;
+      --muted:    #8898b0;
+      --radius:   14px;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ─── hero ──────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #0d1b2a 0%, #0b1520 50%, #0a0e1a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 20px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(0,180,216,0.12) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, #00b4d8, #90e0ef, #06d6a0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 14px;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 620px;
+      margin: 0 auto 24px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,180,216,0.12);
+      border: 1px solid rgba(0,180,216,0.35);
+      border-radius: 999px;
+      padding: 6px 18px;
+      font-size: 0.82rem;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ─── nav ───────────────────────────────────────── */
+    .sticky-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(11,14,20,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; gap: 4px;
+      overflow-x: auto; padding: 10px 0;
+      scrollbar-width: none;
+    }
+    .nav-inner::-webkit-scrollbar { display: none; }
+    .nav-btn {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 6px 14px;
+      color: var(--muted);
+      font-size: 0.83rem;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .nav-btn:hover {
+      background: var(--card);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    /* ─── layout ─────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px 80px; }
+
+    /* ─── section ────────────────────────────────────── */
+    .section { margin-bottom: 56px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .section-title { font-size: 1.35rem; font-weight: 700; }
+    .section-sub { color: var(--muted); font-size: 0.88rem; margin-top: 2px; }
+
+    /* ─── cards grid ─────────────────────────────────── */
+    .cards { display: grid; gap: 16px; }
+    .cards.cols-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .cards.cols-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--card-accent, var(--accent));
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
+    .card:hover::before { opacity: 1; }
+    .card:hover { border-color: var(--card-accent, var(--accent)); }
+
+    .card-label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.78rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--card-accent, var(--accent));
+      margin-bottom: 8px;
+    }
+    .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .card-abbr {
+      display: inline-block;
+      background: rgba(0,180,216,0.12);
+      border: 1px solid rgba(0,180,216,0.3);
+      border-radius: 6px;
+      padding: 1px 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .card-desc { color: var(--muted); font-size: 0.88rem; }
+    .card-example {
+      margin-top: 12px;
+      background: rgba(255,255,255,0.04);
+      border-left: 3px solid var(--card-accent, var(--accent));
+      border-radius: 0 6px 6px 0;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      color: #b0bec5;
+    }
+    .card-example strong { color: var(--text); }
+
+    /* ─── badge row ──────────────────────────────────── */
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 999px; padding: 4px 12px;
+      font-size: 0.78rem; font-weight: 600;
+    }
+    .badge.green  { background: rgba(6,214,160,0.15); color: #06d6a0; border: 1px solid rgba(6,214,160,0.35); }
+    .badge.amber  { background: rgba(255,159,28,0.15); color: #ff9f1c; border: 1px solid rgba(255,159,28,0.35); }
+    .badge.red    { background: rgba(239,71,111,0.15); color: #ef476f; border: 1px solid rgba(239,71,111,0.35); }
+    .badge.blue   { background: rgba(0,180,216,0.15); color: #00b4d8; border: 1px solid rgba(0,180,216,0.35); }
+    .badge.pink   { background: rgba(247,37,133,0.15); color: #f72585; border: 1px solid rgba(247,37,133,0.35); }
+
+    /* ─── info box ───────────────────────────────────── */
+    .info-box {
+      background: rgba(0,180,216,0.07);
+      border: 1px solid rgba(0,180,216,0.25);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-size: 0.88rem;
+      color: #a0c4d8;
+    }
+    .info-box strong { color: var(--accent); }
+
+    /* ─── table ──────────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: #1f2840;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 12px 16px;
+      text-align: left;
+    }
+    tbody tr { border-top: 1px solid var(--border); }
+    tbody tr:hover { background: rgba(255,255,255,0.025); }
+    td { padding: 12px 16px; font-size: 0.88rem; }
+    td:first-child { font-weight: 600; color: var(--accent); }
+
+    /* ─── divider ────────────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    /* ─── footer ─────────────────────────────────────── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    /* ─── animation ──────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .section { animation: fadeUp 0.5s ease both; }
+    .section:nth-child(2) { animation-delay: 0.05s; }
+    .section:nth-child(3) { animation-delay: 0.10s; }
+    .section:nth-child(4) { animation-delay: 0.15s; }
+    .section:nth-child(5) { animation-delay: 0.20s; }
+    .section:nth-child(6) { animation-delay: 0.25s; }
+    .section:nth-child(7) { animation-delay: 0.30s; }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>📈 FinPulse — Dashboard Guide</h1>
+  <p>Every number explained in plain English. No finance degree required.</p>
+  <span class="hero-badge">🔍 Layman-Friendly Glossary &amp; Reference</span>
+</div>
+
+<!-- STICKY NAV -->
+<nav class="sticky-nav">
+  <div class="nav-inner">
+    <a class="nav-btn" href="#tabs">📑 Tabs Overview</a>
+    <a class="nav-btn" href="#risk">⚠️ Risk Analytics</a>
+    <a class="nav-btn" href="#garch">📊 GARCH Table</a>
+    <a class="nav-btn" href="#kpi">🏥 Financial KPIs</a>
+    <a class="nav-btn" href="#backtest">🔬 Backtest</a>
+    <a class="nav-btn" href="#badges">🏅 Health Badges</a>
+    <a class="nav-btn" href="#abbr">📖 Full Abbreviations</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ═══════════════════════════════════════ TABS OVERVIEW ═══════════ -->
+  <section class="section" id="tabs">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(0,180,216,0.12);">📑</div>
+      <div>
+        <div class="section-title">Dashboard Tabs — What's Inside Each?</div>
+        <div class="section-sub">Six tabs, each focused on a different angle of your portfolio</div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tab</th>
+            <th>What It Shows</th>
+            <th>Who It's For</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>📈 Stock Predictions</td>
+            <td>AI-predicted closing prices for the next 2 days vs. actual historical prices</td>
+            <td>Anyone wanting a quick view of where prices are headed</td>
+          </tr>
+          <tr>
+            <td>🕯️ Candlestick Charts</td>
+            <td>Last 90 days of Open/High/Low/Close price action with trading volume</td>
+            <td>Traders who like to read price charts</td>
+          </tr>
+          <tr>
+            <td>💼 Portfolio Panel</td>
+            <td>Current value, predicted value, P&amp;L, allocation pie, and holdings breakdown</td>
+            <td>Investors tracking overall portfolio health</td>
+          </tr>
+          <tr>
+            <td>⚠️ Risk Analytics</td>
+            <td>VaR, CVaR, Sharpe Ratio, Max Drawdown, correlation heatmap, GARCH volatility</td>
+            <td>Anyone wanting to understand downside risk</td>
+          </tr>
+          <tr>
+            <td>🔬 Backtest &amp; Accuracy</td>
+            <td>How well the model predicted the past — win rate, direction accuracy, P&amp;L simulation</td>
+            <td>Users evaluating model trustworthiness</td>
+          </tr>
+          <tr>
+            <td>🏥 Financial Health KPIs</td>
+            <td>Company financials: margins, ratios, cash flow, valuation — with health badges</td>
+            <td>Long-term investors doing fundamental analysis</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ RISK ANALYTICS ══════════ -->
+  <section class="section" id="risk">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(239,71,111,0.12);">⚠️</div>
+      <div>
+        <div class="section-title" style="color:var(--red)">Risk Analytics — Plain English</div>
+        <div class="section-sub">All about how much you could lose and how to quantify it</div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>Key Idea:</strong> Risk metrics tell you about the <em>downside</em> — what might go wrong. Think of them like insurance estimates: they don't prevent loss but help you prepare for it.
+    </div>
+
+    <div class="cards cols-2">
+
+      <!-- VaR -->
+      <div class="card" style="--card-accent: var(--red);">
+        <div class="card-label">⚠️ Value at Risk</div>
+        <div class="card-title">VaR — Value at Risk</div>
+        <span class="card-abbr">Full form: Value at Risk</span>
+        <p class="card-desc">The maximum amount your portfolio could <strong>lose on a typical bad day</strong>. Think of it as a "safety net level" — losses beyond this are rare.</p>
+        <div class="card-example">
+          <strong>Example:</strong> "VaR 95% = ₹10,000" means on 95 out of 100 days, you won't lose more than ₹10,000. But on that 1-in-20 bad day, you might.
+        </div>
+        <div class="badge-row">
+          <span class="badge blue">Historical VaR — uses real past data</span>
+          <span class="badge blue">Parametric VaR — uses a formula</span>
+        </div>
+      </div>
+
+      <!-- CVaR -->
+      <div class="card" style="--card-accent: var(--red);">
+        <div class="card-label">💥 Expected Shortfall</div>
+        <div class="card-title">CVaR — Conditional VaR (Expected Shortfall)</div>
+        <span class="card-abbr">Full form: Conditional Value at Risk</span>
+        <p class="card-desc">If a <strong>really bad day does happen</strong> (beyond the VaR threshold), CVaR tells you what your <em>average</em> loss would be in that scenario.</p>
+        <div class="card-example">
+          <strong>Example:</strong> "CVaR 95% = ₹18,000" means on the worst 5% of days, your average loss is ₹18,000 — worse than VaR, which is the boundary.
+        </div>
+      </div>
+
+      <!-- Parametric VaR -->
+      <div class="card" style="--card-accent: var(--amber);">
+        <div class="card-label">📐 Formula-Based</div>
+        <div class="card-title">Parametric VaR (Normal Distribution)</div>
+        <p class="card-desc">Calculates VaR using a <strong>mathematical formula</strong> instead of historical data. It assumes stock returns follow a "bell curve" — which works in normal markets but can underestimate extreme events.</p>
+        <div class="card-example">
+          <strong>When it's useful:</strong> Faster and simpler; good for quick estimates when historical data is limited.
+        </div>
+      </div>
+
+      <!-- MC VaR -->
+      <div class="card" style="--card-accent: var(--green);">
+        <div class="card-label">🎲 Simulation-Based</div>
+        <div class="card-title">Monte Carlo (MC) VaR</div>
+        <span class="card-abbr">MC = Monte Carlo Simulation</span>
+        <p class="card-desc">Runs <strong>thousands of virtual "what if" scenarios</strong> for the next 30 days to estimate the worst-case loss. More realistic because it doesn't assume normal markets.</p>
+        <div class="card-example">
+          <strong>Example:</strong> "MC VaR 30-day = ₹45,000" means across thousands of future scenarios, your worst-case 30-day loss could be ₹45,000.
+        </div>
+      </div>
+
+      <!-- Sharpe Ratio -->
+      <div class="card" style="--card-accent: var(--green);">
+        <div class="card-label">📏 Performance Quality</div>
+        <div class="card-title">Sharpe Ratio</div>
+        <p class="card-desc">Tells you <strong>how much return you get per unit of risk</strong>. A higher Sharpe means you're being well-rewarded for the risk you're taking.</p>
+        <div class="card-example">
+          <strong>Benchmarks:</strong><br>
+          Below 1 = returns not worth the risk<br>
+          1–2 = decent / acceptable<br>
+          Above 2 = excellent risk-adjusted returns
+        </div>
+        <div class="badge-row">
+          <span class="badge green">&gt; 2 — Excellent</span>
+          <span class="badge amber">1–2 — Acceptable</span>
+          <span class="badge red">&lt; 1 — Risky</span>
+        </div>
+      </div>
+
+      <!-- Max Drawdown -->
+      <div class="card" style="--card-accent: var(--red);">
+        <div class="card-label">📉 Worst Drop</div>
+        <div class="card-title">Max Drawdown</div>
+        <p class="card-desc">The <strong>biggest fall from a peak</strong> your portfolio has ever experienced. It answers: "What's the worst I've been down from a high point?"</p>
+        <div class="card-example">
+          <strong>Example:</strong> "Max Drawdown = -18%" means at its worst, the portfolio fell 18% from a previous peak before recovering.
+        </div>
+        <div class="badge-row">
+          <span class="badge green">0% to -10% — Minimal risk</span>
+          <span class="badge amber">-10% to -20% — Moderate</span>
+          <span class="badge red">Below -20% — High risk</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ GARCH TABLE ═════════════ -->
+  <section class="section" id="garch">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(0,180,216,0.12);">📊</div>
+      <div>
+        <div class="section-title">GARCH Volatility Table — Column by Column</div>
+        <div class="section-sub">Understanding what each column in the per-stock risk table means</div>
+      </div>
+    </div>
+
+    <div class="cards cols-2">
+
+      <div class="card" style="--card-accent: var(--accent);">
+        <div class="card-label">📊 Volatility Model</div>
+        <div class="card-title">GARCH Volatility (Ann %)</div>
+        <span class="card-abbr">GARCH = Generalized AutoRegressive Conditional Heteroskedasticity</span>
+        <p class="card-desc">A statistical model that <strong>predicts how much a stock's price will swing</strong> in the future, based on past price movements. Expressed as an annual percentage.</p>
+        <div class="card-example">
+          <strong>Example:</strong> "GARCH Vol = 28%" means the model expects this stock could swing ±28% over the course of a year. Higher = riskier.
+        </div>
+        <div class="badge-row">
+          <span class="badge green">&lt; 15% — Low Volatility</span>
+          <span class="badge amber">15–30% — Moderate</span>
+          <span class="badge red">&gt; 30% — High Volatility</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent: var(--amber);">
+        <div class="card-label">⚖️ Risk Weighting</div>
+        <div class="card-title">RAF — Risk Adjustment Factor</div>
+        <span class="card-abbr">RAF = Risk Adjustment Factor</span>
+        <p class="card-desc">A <strong>multiplier used to adjust how much weight a stock gets</strong> in the portfolio, based on its riskiness. A stock with high volatility gets a lower RAF, reducing its share.</p>
+        <div class="card-example">
+          <strong>Example:</strong> RAF = 0.7 means this stock gets 30% less weight than it would without adjustment — because it's riskier.
+        </div>
+        <div class="badge-row">
+          <span class="badge green">Close to 1.0 — Low risk, full weight</span>
+          <span class="badge red">Close to 0.5 — High risk, reduced weight</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent: var(--pink);">
+        <div class="card-label">📡 Market Sensitivity</div>
+        <div class="card-title">Beta</div>
+        <p class="card-desc">Measures how much a stock <strong>moves relative to the overall market</strong>. Beta = 1 means it moves exactly with the market. Above 1 = more volatile; below 1 = calmer.</p>
+        <div class="card-example">
+          <strong>Example:</strong> Beta = 1.4 means if the market drops 10%, this stock is likely to drop ~14%. Beta = 0.6 means it'd drop only ~6%.
+        </div>
+        <div class="badge-row">
+          <span class="badge green">&lt; 0.8 — Defensive (calm)</span>
+          <span class="badge amber">0.8–1.2 — Market-like</span>
+          <span class="badge red">&gt; 1.2 — Aggressive (volatile)</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent: var(--red);">
+        <div class="card-label">🏦 Debt Level</div>
+        <div class="card-title">D/E Ratio — Debt-to-Equity</div>
+        <span class="card-abbr">D/E = Debt ÷ Shareholder Equity</span>
+        <p class="card-desc">Shows <strong>how much a company borrows vs. how much is owned by shareholders</strong>. High D/E means the company relies heavily on debt — more financial risk.</p>
+        <div class="card-example">
+          <strong>Example:</strong> D/E = 120% means for every ₹100 of shareholder money, the company borrowed ₹120. Risky if earnings drop.
+        </div>
+        <div class="badge-row">
+          <span class="badge green">&lt; 50% — Conservative</span>
+          <span class="badge amber">50–150% — Moderate</span>
+          <span class="badge red">&gt; 150% — High Leverage</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ FINANCIAL KPIs ══════════ -->
+  <section class="section" id="kpi">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(6,214,160,0.12);">🏥</div>
+      <div>
+        <div class="section-title">Financial Health KPIs — What They All Mean</div>
+        <div class="section-sub">KPI = Key Performance Indicator — a number that grades company health</div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>KPI (Key Performance Indicator)</strong> — A measurable value used to assess how well a company is performing financially. Think of it like a report card with different subjects (profits, debt, cash, valuation).
+    </div>
+
+    <h3 style="color:var(--accent);margin: 0 0 16px;font-size:1.05rem;">📄 Income Statement KPIs</h3>
+    <div class="cards cols-3" style="margin-bottom:28px;">
+
+      <div class="card" style="--card-accent:var(--accent);">
+        <div class="card-label">💰 Profitability</div>
+        <div class="card-title">Net Profit Margin</div>
+        <p class="card-desc">Out of every ₹100 earned, how many rupees the company keeps as profit after all expenses and taxes.</p>
+        <div class="card-example"><strong>Example:</strong> Margin = 12% → for every ₹100 in sales, ₹12 is profit.</div>
+        <div class="badge-row">
+          <span class="badge green">&gt; 10% — Strong</span>
+          <span class="badge amber">5–10% — Fair</span>
+          <span class="badge red">&lt; 5% — Thin</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--accent);">
+        <div class="card-label">🏭 Production Efficiency</div>
+        <div class="card-title">Gross Margin</div>
+        <p class="card-desc">Profit left after subtracting the direct cost of making the product (COGS). Measures production efficiency.</p>
+        <div class="card-example"><strong>Formula:</strong> (Revenue - Cost of Goods) ÷ Revenue</div>
+        <div class="badge-row">
+          <span class="badge green">&gt; 40% — Strong moat</span>
+          <span class="badge amber">20–40% — Moderate</span>
+          <span class="badge red">&lt; 20% — Low</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--accent);">
+        <div class="card-label">⚙️ Core Earnings</div>
+        <div class="card-title">EBITDA</div>
+        <span class="card-abbr">Earnings Before Interest, Tax, Depreciation &amp; Amortisation</span>
+        <p class="card-desc">A measure of core <strong>operating profitability</strong> — strips out accounting effects and financing costs to show raw business performance.</p>
+        <div class="badge-row">
+          <span class="badge green">Positive — Profitable operations</span>
+          <span class="badge red">Negative — Burning cash</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--accent);">
+        <div class="card-label">📈 Growth</div>
+        <div class="card-title">Revenue Growth</div>
+        <p class="card-desc">Year-over-year change in total sales. Positive means the company is growing; negative means it's shrinking.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 15% — High Growth</span>
+          <span class="badge amber">0–15% — Growing</span>
+          <span class="badge red">Negative — Declining</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--accent);">
+        <div class="card-label">📊 Operations</div>
+        <div class="card-title">Operating Margin</div>
+        <p class="card-desc">Profit from daily business operations (before interest and taxes) as a share of revenue. Shows operational efficiency.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 15% — Strong ops</span>
+          <span class="badge amber">5–15% — Fair</span>
+          <span class="badge red">&lt; 5% — Weak</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--accent);">
+        <div class="card-label">💸 Bottom Line Growth</div>
+        <div class="card-title">Earnings Growth</div>
+        <p class="card-desc">Year-over-year growth in net profit (bottom line). Accelerating earnings growth often signals increasing investor confidence.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 10% — Accelerating</span>
+          <span class="badge amber">0–10% — Stable</span>
+          <span class="badge red">Negative — Declining</span>
+        </div>
+      </div>
+
+    </div>
+
+    <h3 style="color:var(--green);margin: 0 0 16px;font-size:1.05rem;">🏦 Balance Sheet KPIs</h3>
+    <div class="cards cols-3" style="margin-bottom:28px;">
+
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="card-label">💧 Short-Term Health</div>
+        <div class="card-title">Current Ratio</div>
+        <p class="card-desc">Can the company pay its bills in the next year? Ratio of current assets to current liabilities.</p>
+        <div class="card-example"><strong>Think of it as:</strong> Do you have enough cash and assets to cover debts due soon?</div>
+        <div class="badge-row">
+          <span class="badge green">&gt; 1.5 — Safe</span>
+          <span class="badge amber">1–1.5 — Adequate</span>
+          <span class="badge red">&lt; 1 — Risky</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="card-label">⚡ Immediate Liquidity</div>
+        <div class="card-title">Quick Ratio</div>
+        <p class="card-desc">Same as Current Ratio but excludes inventory (which may be hard to sell quickly). More conservative liquidity test.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 1 — Liquid</span>
+          <span class="badge amber">0.5–1 — Tight</span>
+          <span class="badge red">&lt; 0.5 — Illiquid</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="card-label">🏦 Debt Level</div>
+        <div class="card-title">D/E Ratio — Debt-to-Equity</div>
+        <span class="card-abbr">DE = Debt ÷ Equity</span>
+        <p class="card-desc">How much a company relies on borrowed money vs. shareholder money. High ratio = more debt dependency.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 50% — Conservative</span>
+          <span class="badge amber">50–150% — Moderate</span>
+          <span class="badge red">&gt; 150% — Leveraged</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="card-label">📦 Working Capital</div>
+        <div class="card-title">Working Capital</div>
+        <p class="card-desc">Money available for day-to-day operations. Calculated as Current Assets minus Current Liabilities.</p>
+        <div class="badge-row">
+          <span class="badge green">Positive — Healthy buffer</span>
+          <span class="badge red">Negative — Liquidity crunch</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="card-label">📈 Capital Efficiency</div>
+        <div class="card-title">ROE — Return on Equity</div>
+        <span class="card-abbr">ROE = Net Income ÷ Shareholder Equity</span>
+        <p class="card-desc">How well management is using shareholder money to generate profits. Higher = more efficient use of investor funds.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 20% — Excellent</span>
+          <span class="badge amber">10–20% — Good</span>
+          <span class="badge red">&lt; 10% — Low</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="card-label">🏗️ Asset Efficiency</div>
+        <div class="card-title">ROA — Return on Assets</div>
+        <span class="card-abbr">ROA = Net Income ÷ Total Assets</span>
+        <p class="card-desc">How efficiently the company uses all its assets to generate profit. Asset-light businesses with high ROA are highly desirable.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 10% — Efficient</span>
+          <span class="badge amber">5–10% — Fair</span>
+          <span class="badge red">&lt; 5% — Low</span>
+        </div>
+      </div>
+
+    </div>
+
+    <h3 style="color:var(--amber);margin: 0 0 16px;font-size:1.05rem;">💰 Cash Flow KPIs</h3>
+    <div class="cards cols-2" style="margin-bottom:28px;">
+
+      <div class="card" style="--card-accent:var(--amber);">
+        <div class="card-label">🩸 Lifeblood Metric</div>
+        <div class="card-title">Operating Cash Flow (OCF)</div>
+        <span class="card-abbr">OCF = Cash generated from core business operations</span>
+        <p class="card-desc">Cash flowing in from the company's main day-to-day business. This is the most honest indicator of financial health — unlike profit, it's hard to fake.</p>
+        <div class="badge-row">
+          <span class="badge green">Positive — Cash generating</span>
+          <span class="badge red">Negative — Cash burning</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--amber);">
+        <div class="card-label">🆓 True Surplus</div>
+        <div class="card-title">Free Cash Flow (FCF)</div>
+        <span class="card-abbr">FCF = OCF minus Capital Expenditures</span>
+        <p class="card-desc">Cash left over after maintaining/expanding the business (CapEx). Positive FCF = the company can pay dividends, buy back shares, or grow — sustainably.</p>
+        <div class="badge-row">
+          <span class="badge green">Positive — Sustaintable business</span>
+          <span class="badge red">Negative — Needs external funding</span>
+        </div>
+      </div>
+
+    </div>
+
+    <h3 style="color:var(--pink);margin: 0 0 16px;font-size:1.05rem;">🔗 Hybrid &amp; Valuation KPIs</h3>
+    <div class="cards cols-3">
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">🏷️ Valuation</div>
+        <div class="card-title">P/E Ratio — Price-to-Earnings</div>
+        <span class="card-abbr">P/E = Stock Price ÷ Earnings Per Share</span>
+        <p class="card-desc">How many times investors are paying relative to a company's profits. High P/E can mean growth expectations; low P/E can mean undervaluation.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 15x — Value</span>
+          <span class="badge amber">15–25x — Fair</span>
+          <span class="badge pink">&gt; 25x — Growth Premium</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">📚 Book Value</div>
+        <div class="card-title">Price-to-Book (P/B)</div>
+        <span class="card-abbr">P/B = Market Price ÷ Book Value per Share</span>
+        <p class="card-desc">Compares stock price to the company's net asset value (what you'd get if it liquidated tomorrow). Below 1 = possibly undervalued.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 1x — Potentially Undervalued</span>
+          <span class="badge amber">1–3x — Fair</span>
+          <span class="badge pink">&gt; 3x — Premium (expects growth)</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">🏢 Enterprise Metric</div>
+        <div class="card-title">EV/EBITDA</div>
+        <span class="card-abbr">EV = Enterprise Value (total value); EBITDA = Operating Earnings</span>
+        <p class="card-desc">Compares total company value to its operating earnings. A lower ratio often signals the company is cheap relative to its earnings power.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 10x — Cheap</span>
+          <span class="badge amber">10–15x — Fair</span>
+          <span class="badge pink">&gt; 15x — Expensive</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">💵 Income</div>
+        <div class="card-title">Dividend Yield</div>
+        <p class="card-desc">Annual dividend paid as a percentage of share price. High yield = better income stream for investors holding the stock.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 3% — Income Stock</span>
+          <span class="badge amber">0–3% — Modest</span>
+          <span class="badge red">0% — No Dividend</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">📡 Sensitivity</div>
+        <div class="card-title">Beta (Market Sensitivity)</div>
+        <p class="card-desc">Repeated from the GARCH table — measures how much a stock moves with the market. Covered in the GARCH section above.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 0.8 — Defensive</span>
+          <span class="badge amber">0.8–1.2 — Market-like</span>
+          <span class="badge red">&gt; 1.2 — Aggressive</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">📊 Growth + Value</div>
+        <div class="card-title">PEG Ratio</div>
+        <span class="card-abbr">PEG = P/E ÷ Earnings Growth Rate</span>
+        <p class="card-desc">Combines valuation and growth into one number. A PEG below 1 suggests the stock might be undervalued <em>even for a growth company</em>.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 1 — Bargain Growth</span>
+          <span class="badge amber">1–2 — Fair</span>
+          <span class="badge red">&gt; 2 — Overvalued</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">👥 Productivity</div>
+        <div class="card-title">Revenue per Employee</div>
+        <p class="card-desc">How much revenue the company generates per employee. Higher means the workforce is more productive or the business model needs fewer people.</p>
+      </div>
+
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="card-label">📤 Dividend Safety</div>
+        <div class="card-title">Payout Ratio</div>
+        <p class="card-desc">Percentage of net earnings paid out as dividends. A very high payout may be unsustainable if earnings drop.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 60% — Sustainable</span>
+          <span class="badge amber">&gt; 60% — High / Monitor</span>
+          <span class="badge red">0% — No Payout</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ BACKTEST ════════════════ -->
+  <section class="section" id="backtest">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(0,180,216,0.12);">🔬</div>
+      <div>
+        <div class="section-title">Backtest &amp; Accuracy — What Do the Numbers Mean?</div>
+        <div class="section-sub">How the model's past predictions are scored</div>
+      </div>
+    </div>
+
+    <div class="cards cols-2">
+
+      <div class="card" style="--card-accent:var(--accent);">
+        <div class="card-label">🏆 Accuracy</div>
+        <div class="card-title">Direction Accuracy</div>
+        <p class="card-desc">What percentage of days the model correctly predicted whether the price would go <strong>up or down</strong>. 50% = random guessing; anything above 55% is meaningful.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 60% — Good prediction</span>
+          <span class="badge amber">55–60% — Acceptable</span>
+          <span class="badge red">&lt; 55% — Near-random</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="card-label">🎯 Model Quality</div>
+        <div class="card-title">R² Score</div>
+        <span class="card-abbr">R² = Coefficient of Determination</span>
+        <p class="card-desc">Measures how well the model's predictions match actual prices. Ranges from 0 (useless) to 1 (perfect). Common in regression/ML models.</p>
+        <div class="badge-row">
+          <span class="badge green">&gt; 0.90 — Excellent</span>
+          <span class="badge blue">0.75–0.90 — Good</span>
+          <span class="badge amber">0.50–0.75 — Fair</span>
+          <span class="badge red">&lt; 0.50 — Poor</span>
+        </div>
+      </div>
+
+      <div class="card" style="--card-accent:var(--amber);">
+        <div class="card-label">📏 Prediction Error</div>
+        <div class="card-title">MAE &amp; RMSE</div>
+        <span class="card-abbr">MAE = Mean Absolute Error · RMSE = Root Mean Squared Error</span>
+        <p class="card-desc">How far off (in ₹) the model's predictions are on average. Lower = more accurate.<br>RMSE penalises large errors more — better at catching big mispredictions.</p>
+      </div>
+
+      <div class="card" style="--card-accent:var(--amber);">
+        <div class="card-label">📐 % Error</div>
+        <div class="card-title">MAPE</div>
+        <span class="card-abbr">Mean Absolute Percentage Error</span>
+        <p class="card-desc">Average prediction error expressed as a percentage. MAPE = 3% means the model is off by about 3% on average — a useful scale-independent metric.</p>
+        <div class="badge-row">
+          <span class="badge green">&lt; 3% — Excellent</span>
+          <span class="badge amber">3–7% — Good</span>
+          <span class="badge red">&gt; 10% — High Error</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ HEALTH BADGES ═══════════ -->
+  <section class="section" id="badges">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(6,214,160,0.12);">🏅</div>
+      <div>
+        <div class="section-title">Health Badge Legend</div>
+        <div class="section-sub">What the coloured labels next to KPIs mean</div>
+      </div>
+    </div>
+    <div class="cards cols-2">
+      <div class="card" style="--card-accent:var(--green);">
+        <div class="badge-row" style="margin-bottom:10px;"><span class="badge green">● Green Badge</span></div>
+        <p class="card-desc">Strong / Healthy — The metric is in an excellent range. This is where you want most of your stocks to be.</p>
+      </div>
+      <div class="card" style="--card-accent:var(--amber);">
+        <div class="badge-row" style="margin-bottom:10px;"><span class="badge amber">● Amber Badge</span></div>
+        <p class="card-desc">Moderate / Fair — Not alarming, but worth monitoring. Room for improvement.</p>
+      </div>
+      <div class="card" style="--card-accent:var(--red);">
+        <div class="badge-row" style="margin-bottom:10px;"><span class="badge red">● Red Badge</span></div>
+        <p class="card-desc">Weak / Risky — A warning sign. The metric is in a concerning range that may need attention.</p>
+      </div>
+      <div class="card" style="--card-accent:var(--pink);">
+        <div class="badge-row" style="margin-bottom:10px;"><span class="badge pink">● Pink Badge</span></div>
+        <p class="card-desc">Premium / Aggressive — High valuation or high risk. Not necessarily bad — growth stocks often land here.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ ABBREVIATION TABLE ══════ -->
+  <section class="section" id="abbr">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(0,180,216,0.12);">📖</div>
+      <div>
+        <div class="section-title">All Abbreviations — Full Forms at a Glance</div>
+        <div class="section-sub">Quick reference for every acronym used in FinPulse</div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Short Form</th>
+            <th>Full Form</th>
+            <th>One-Line Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>GARCH</td><td>Generalized AutoRegressive Conditional Heteroskedasticity</td><td>Statistical model to forecast how volatile a stock will be</td></tr>
+          <tr><td>VaR</td><td>Value at Risk</td><td>Maximum expected loss on a bad day at a given confidence level</td></tr>
+          <tr><td>CVaR</td><td>Conditional Value at Risk</td><td>Average loss on the worst days (beyond VaR); also called Expected Shortfall</td></tr>
+          <tr><td>MC</td><td>Monte Carlo</td><td>Simulation technique using thousands of random scenarios to estimate risk</td></tr>
+          <tr><td>RAF</td><td>Risk Adjustment Factor</td><td>A multiplier that scales portfolio weight based on each stock's risk level</td></tr>
+          <tr><td>D/E</td><td>Debt-to-Equity Ratio</td><td>How much a company borrows vs. owns; measures financial leverage</td></tr>
+          <tr><td>KPI</td><td>Key Performance Indicator</td><td>A measurable value used to track company financial health</td></tr>
+          <tr><td>ROE</td><td>Return on Equity</td><td>How efficiently shareholder investment is turned into profit</td></tr>
+          <tr><td>ROA</td><td>Return on Assets</td><td>How efficiently company assets are used to generate profit</td></tr>
+          <tr><td>EBITDA</td><td>Earnings Before Interest, Taxes, Depreciation &amp; Amortisation</td><td>Core operating profitability, stripped of accounting and financing effects</td></tr>
+          <tr><td>P/E</td><td>Price-to-Earnings Ratio</td><td>How much investors pay per rupee of company earnings</td></tr>
+          <tr><td>P/B</td><td>Price-to-Book Ratio</td><td>Market price vs. net asset value of the company</td></tr>
+          <tr><td>EV</td><td>Enterprise Value</td><td>Total value of a company including debt, beyond just market cap</td></tr>
+          <tr><td>EV/EBITDA</td><td>Enterprise Value to EBITDA</td><td>Valuation multiple comparing total company cost to operating earnings</td></tr>
+          <tr><td>PEG</td><td>Price/Earnings to Growth Ratio</td><td>Valuation metric that factors in earnings growth rate</td></tr>
+          <tr><td>OCF</td><td>Operating Cash Flow</td><td>Cash generated from a company's core day-to-day operations</td></tr>
+          <tr><td>FCF</td><td>Free Cash Flow</td><td>Cash left after maintaining and expanding the business (OCF - CapEx)</td></tr>
+          <tr><td>CapEx</td><td>Capital Expenditure</td><td>Money spent on maintaining or upgrading physical assets</td></tr>
+          <tr><td>COGS</td><td>Cost of Goods Sold</td><td>Direct costs of producing the goods or services sold</td></tr>
+          <tr><td>R²</td><td>R-Squared / Coefficient of Determination</td><td>How well a model's predictions match actual values (0=useless, 1=perfect)</td></tr>
+          <tr><td>MAE</td><td>Mean Absolute Error</td><td>Average prediction error in original units (e.g. ₹)</td></tr>
+          <tr><td>RMSE</td><td>Root Mean Squared Error</td><td>Similar to MAE but punishes larger errors more</td></tr>
+          <tr><td>MAPE</td><td>Mean Absolute Percentage Error</td><td>Average prediction error as a percentage; scale-independent</td></tr>
+          <tr><td>GBM</td><td>Geometric Brownian Motion</td><td>A mathematical model for simulating random stock price paths</td></tr>
+          <tr><td>NSE</td><td>National Stock Exchange (India)</td><td>India's primary stock exchange; tickers end in .NS</td></tr>
+          <tr><td>OHLC</td><td>Open, High, Low, Close</td><td>The four key price points of a trading day</td></tr>
+          <tr><td>P&amp;L</td><td>Profit &amp; Loss</td><td>Net gain or losses from trades or investments</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div><!-- /container -->
+
+<footer class="footer">
+  <p>📈 FinPulse Quant Engine &nbsp;·&nbsp; Dashboard Guide &amp; Glossary &nbsp;·&nbsp; For educational use</p>
+  <p style="margin-top:6px; color:#4a5568;">All metrics are computed from publicly available market data via Yahoo Finance.</p>
+</footer>
+
+</body>
+</html>
