@@ -389,7 +389,7 @@ st.markdown("### 🔍 Stock Selection & Portfolio Setup")
 selected_tickers = st.multiselect(
     "Select NSE Stocks",
     options=DEFAULT_TICKERS,
-    default=["TCS.NS", "INFY.NS", "HDFCBANK.NS"],
+    default=["TCS.NS", "INFY.NS"],
 )
 
 quantities = {}
